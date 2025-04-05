@@ -13,6 +13,9 @@ public class UserDto {
     private String profilePicture;
     private Boolean isAdmin;
     private Boolean isOnboarded;
+    private String program;
+    private String yearOfGraduation;
+    private String professionalProfile;
     
     public UserDto() {
     }
@@ -27,6 +30,9 @@ public class UserDto {
         dto.setProfilePicture(user.getProfilePicture());
         dto.setIsAdmin(user.getIsAdmin());
         dto.setIsOnboarded(user.getIsOnboarded());
+        dto.setProgram(user.getProgram());
+        dto.setYearOfGraduation(user.getYearOfGraduation());
+        dto.setProfessionalProfile(user.getShareSpaceProfileUsername()); // this is the professional profile
         return dto;
     }
     
@@ -94,5 +100,29 @@ public class UserDto {
     
     public void setIsOnboarded(Boolean isOnboarded) {
         this.isOnboarded = isOnboarded;
+    }
+    
+    public String getProgram() {
+        return program;
+    }
+    
+    public void setProgram(String program) {
+        this.program = program;
+    }
+    
+    public String getYearOfGraduation() {
+        return yearOfGraduation;
+    }
+    
+    public void setYearOfGraduation(String yearOfGraduation) {
+        this.yearOfGraduation = yearOfGraduation;
+    }
+    
+    public String getProfessionalProfile() {
+        return professionalProfile;
+    }
+    
+    public void setProfessionalProfile(String professionalProfile) {
+        this.professionalProfile = professionalProfile;
     }
 } 
