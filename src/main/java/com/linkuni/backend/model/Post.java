@@ -17,26 +17,11 @@ public class Post extends Auditable {
     @Column(name = "post_id", updatable = false, nullable = false)
     private UUID postId;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
     @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "description", nullable = false, length = 1000)
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-
-    @Column(name = "thumbnail")
-    private String thumbnail;
-
-    @Column(name = "is_blacklisted")
-    private Boolean isBlacklisted = false;
-
-    @Column(name = "file_type", nullable = false)
-    private String fileType;
-
-    @Column(name = "file_name", nullable = false)
-    private String fileName;
 
     @Column(name = "file_url", nullable = false)
     private String fileUrl;
@@ -44,23 +29,33 @@ public class Post extends Auditable {
     @Column(name = "file_key", nullable = false)
     private String fileKey;
 
-    @ElementCollection
-    @CollectionTable(name = "post_likes", joinColumns = @JoinColumn(name = "post_id"))
-    @Column(name = "user_id")
-    private List<UUID> likes = new ArrayList<>();
+    @Column(name = "file_type", nullable = false)
+    private String fileType;
+
+    @Column(name = "file_name", nullable = false)
+    private String fileName;
 
     @Column(name = "program", nullable = false)
     private String program;
-
-    @Column(name = "semester")
-    private Integer semester;
 
     @Column(name = "course", nullable = false)
     private String course;
 
     @Column(name = "resource_type", nullable = false)
     private String resourceType;
-    
+
+    @ElementCollection
+    @CollectionTable(name = "post_likes", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "user_id")
+    private List<UUID> likes = new ArrayList<>();
+
+    @Column(name = "is_blacklisted")
+    private Boolean isBlacklisted = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     public Post() {
     }
 
@@ -70,14 +65,6 @@ public class Post extends Auditable {
 
     public void setPostId(UUID postId) {
         this.postId = postId;
-    }
-
-    public UUID getUserId() {
-        return userId;
-    }
-
-    public void setUserId(UUID userId) {
-        this.userId = userId;
     }
 
     public String getTitle() {
@@ -96,20 +83,20 @@ public class Post extends Auditable {
         this.description = description;
     }
 
-    public String getThumbnail() {
-        return thumbnail;
+    public String getFileUrl() {
+        return fileUrl;
     }
 
-    public void setThumbnail(String thumbnail) {
-        this.thumbnail = thumbnail;
+    public void setFileUrl(String fileUrl) {
+        this.fileUrl = fileUrl;
     }
 
-    public Boolean getIsBlacklisted() {
-        return isBlacklisted;
+    public String getFileKey() {
+        return fileKey;
     }
 
-    public void setIsBlacklisted(Boolean isBlacklisted) {
-        this.isBlacklisted = isBlacklisted;
+    public void setFileKey(String fileKey) {
+        this.fileKey = fileKey;
     }
 
     public String getFileType() {
@@ -128,44 +115,12 @@ public class Post extends Auditable {
         this.fileName = fileName;
     }
 
-    public String getFileUrl() {
-        return fileUrl;
-    }
-
-    public void setFileUrl(String fileUrl) {
-        this.fileUrl = fileUrl;
-    }
-
-    public String getFileKey() {
-        return fileKey;
-    }
-
-    public void setFileKey(String fileKey) {
-        this.fileKey = fileKey;
-    }
-
-    public List<UUID> getLikes() {
-        return likes;
-    }
-
-    public void setLikes(List<UUID> likes) {
-        this.likes = likes;
-    }
-
     public String getProgram() {
         return program;
     }
 
     public void setProgram(String program) {
         this.program = program;
-    }
-
-    public Integer getSemester() {
-        return semester;
-    }
-
-    public void setSemester(Integer semester) {
-        this.semester = semester;
     }
 
     public String getCourse() {
@@ -182,5 +137,29 @@ public class Post extends Auditable {
 
     public void setResourceType(String resourceType) {
         this.resourceType = resourceType;
+    }
+
+    public List<UUID> getLikes() {
+        return likes;
+    }
+
+    public void setLikes(List<UUID> likes) {
+        this.likes = likes;
+    }
+
+    public Boolean getIsBlacklisted() {
+        return isBlacklisted;
+    }
+
+    public void setIsBlacklisted(Boolean isBlacklisted) {
+        this.isBlacklisted = isBlacklisted;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 } 
