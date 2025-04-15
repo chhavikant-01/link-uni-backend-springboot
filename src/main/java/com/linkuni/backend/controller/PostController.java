@@ -502,10 +502,12 @@ public class PostController {
         
         Map<String, Object> extractionData = new HashMap<>();
         
-        // Get summary if available
+        // Get summary if available, otherwise set default text
         Optional<Summary> summaryOptional = summaryRepository.findByPost_PostId(postId);
         if (summaryOptional.isPresent()) {
             extractionData.put("summary", summaryOptional.get().getSummaryText());
+        } else {
+            extractionData.put("summary", "Summary not available");
         }
         
         // Get extracted text if available
@@ -514,7 +516,7 @@ public class PostController {
             extractionData.put("extractedText", textExtractOptional.get().getExtractedText());
         }
         
-        if (extractionData.isEmpty()) {
+        if (extractionData.size() <= 1 && !extractionData.containsKey("extractedText")) {
             return ResponseEntity.notFound().build();
         }
         

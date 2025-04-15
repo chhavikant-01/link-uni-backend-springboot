@@ -148,7 +148,11 @@ public class PostService {
                 processDocumentAsync(savedPost, file);
             }
             
-            return ApiResponse.success("Post successfully uploaded!", PostDto.fromPost(savedPost));
+            PostDto postDto = PostDto.fromPost(savedPost);
+            // Add default summary since we just created the post and likely don't have a summary yet
+            postDto.setSummary("Summary not available");
+            
+            return ApiResponse.success("Post successfully uploaded!", postDto);
             
         } catch (IOException e) {
             logger.error("Error uploading file to S3: {}", e.getMessage(), e);
@@ -218,10 +222,12 @@ public class PostService {
         
         PostDto postDto = PostDto.fromPost(post);
         
-        // Fetch and include summary if available
+        // Fetch and include summary if available, otherwise set default
         Optional<Summary> summaryOptional = summaryRepository.findByPost(post);
         if (summaryOptional.isPresent()) {
             postDto.setSummary(summaryOptional.get().getSummaryText());
+        } else {
+            postDto.setSummary("Summary not available");
         }
         
         // Fetch and include text extract if available
@@ -376,7 +382,17 @@ public class PostService {
         try {
             List<Post> posts = postRepository.findAll();
             List<PostDto> postDtos = posts.stream()
-                    .map(PostDto::fromPost)
+                    .map(post -> {
+                        PostDto dto = PostDto.fromPost(post);
+                        // Add summary if available, otherwise set default
+                        Optional<Summary> summaryOptional = summaryRepository.findByPost(post);
+                        if (summaryOptional.isPresent()) {
+                            dto.setSummary(summaryOptional.get().getSummaryText());
+                        } else {
+                            dto.setSummary("Summary not available");
+                        }
+                        return dto;
+                    })
                     .toList();
             
             logger.info("Retrieved {} posts", posts.size());
@@ -406,7 +422,17 @@ public class PostService {
         try {
             List<Post> posts = postRepository.findByUser_UserId(userId);
             List<PostDto> postDtos = posts.stream()
-                    .map(PostDto::fromPost)
+                    .map(post -> {
+                        PostDto dto = PostDto.fromPost(post);
+                        // Add summary if available, otherwise set default
+                        Optional<Summary> summaryOptional = summaryRepository.findByPost(post);
+                        if (summaryOptional.isPresent()) {
+                            dto.setSummary(summaryOptional.get().getSummaryText());
+                        } else {
+                            dto.setSummary("Summary not available");
+                        }
+                        return dto;
+                    })
                     .toList();
             
             logger.info("Retrieved {} posts for user {}", posts.size(), userId);
@@ -444,7 +470,17 @@ public class PostService {
         try {
             List<Post> savedPosts = postRepository.findAllById(savedPostIds);
             List<PostDto> postDtos = savedPosts.stream()
-                    .map(PostDto::fromPost)
+                    .map(post -> {
+                        PostDto dto = PostDto.fromPost(post);
+                        // Add summary if available, otherwise set default
+                        Optional<Summary> summaryOptional = summaryRepository.findByPost(post);
+                        if (summaryOptional.isPresent()) {
+                            dto.setSummary(summaryOptional.get().getSummaryText());
+                        } else {
+                            dto.setSummary("Summary not available");
+                        }
+                        return dto;
+                    })
                     .toList();
             
             logger.info("Retrieved {} saved posts for user {}", savedPosts.size(), userId);
@@ -525,7 +561,16 @@ public class PostService {
             
             logger.info("Post updated successfully: {}", postId);
             
-            return ApiResponse.success("Post updated successfully", PostDto.fromPost(updatedPost));
+            PostDto postDto = PostDto.fromPost(updatedPost);
+            // Add summary if available, otherwise set default
+            Optional<Summary> summaryOptional = summaryRepository.findByPost(updatedPost);
+            if (summaryOptional.isPresent()) {
+                postDto.setSummary(summaryOptional.get().getSummaryText());
+            } else {
+                postDto.setSummary("Summary not available");
+            }
+            
+            return ApiResponse.success("Post updated successfully", postDto);
         } catch (Exception e) {
             logger.error("Error updating post: {}", e.getMessage(), e);
             return ApiResponse.error("Error updating post: " + e.getMessage());
@@ -768,7 +813,17 @@ public class PostService {
             
             // Convert to DTOs
             List<PostDto> postDtos = filteredPosts.stream()
-                    .map(PostDto::fromPost)
+                    .map(post -> {
+                        PostDto dto = PostDto.fromPost(post);
+                        // Add summary if available, otherwise set default
+                        Optional<Summary> summaryOptional = summaryRepository.findByPost(post);
+                        if (summaryOptional.isPresent()) {
+                            dto.setSummary(summaryOptional.get().getSummaryText());
+                        } else {
+                            dto.setSummary("Summary not available");
+                        }
+                        return dto;
+                    })
                     .toList();
             
             logger.info("Filtered posts: returned {} matches", postDtos.size());
