@@ -6,7 +6,9 @@ import com.linkuni.backend.dto.ShareSpaceProfileRequest;
 import com.linkuni.backend.dto.ShareSpaceUsernameRequest;
 import com.linkuni.backend.dto.UpdateUserRequest;
 import com.linkuni.backend.dto.UserDto;
+import com.linkuni.backend.model.Post;
 import com.linkuni.backend.model.User;
+import com.linkuni.backend.repository.PostRepository;
 import com.linkuni.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -26,10 +29,15 @@ public class UserService {
     
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PostRepository postRepository;
+    private final S3Service s3Service;
     
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, 
+                      PostRepository postRepository, S3Service s3Service) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.postRepository = postRepository;
+        this.s3Service = s3Service;
     }
     
     /**
@@ -338,14 +346,35 @@ public class UserService {
         
         User user = userOptional.get();
         
-        // Delete the user
-        userRepository.delete(user);
-        
-        // TODO: Delete all posts by the user
-        // This will be implemented when Post model and repository are created
-        
-        logger.info("User deleted: {}", user.getEmail());
-        return ApiResponse.success("User deleted!", null);
+        try {
+            // Delete all posts by the user first
+            List<Post> userPosts = postRepository.findByUser_UserId(userId);
+            
+            // Delete files from S3 for each post
+            for (Post post : userPosts) {
+                String fileKey = post.getFileKey();
+                if (fileKey != null && !fileKey.isEmpty()) {
+                    try {
+                        s3Service.deleteFile(fileKey);
+                    } catch (IOException e) {
+                        logger.warn("Error deleting file from S3 for post {}: {}", post.getPostId(), e.getMessage());
+                        // Continue with deletion even if S3 delete fails
+                    }
+                }
+            }
+            
+            // Delete all posts
+            postRepository.deleteAll(userPosts);
+            
+            // Delete the user
+            userRepository.delete(user);
+            
+            logger.info("User deleted: {}", user.getEmail());
+            return ApiResponse.success("User deleted!", null);
+        } catch (Exception e) {
+            logger.error("Error deleting user: {}", e.getMessage(), e);
+            return ApiResponse.error("Error deleting user: " + e.getMessage());
+        }
     }
     
     /**

@@ -5,12 +5,17 @@ import com.linkuni.backend.dto.PostDto;
 import com.linkuni.backend.dto.PostFilterRequest;
 import com.linkuni.backend.dto.PostUploadRequest;
 import com.linkuni.backend.model.Post;
+import com.linkuni.backend.model.Summary;
+import com.linkuni.backend.model.TextExtract;
 import com.linkuni.backend.model.User;
 import com.linkuni.backend.repository.PostRepository;
+import com.linkuni.backend.repository.SummaryRepository;
+import com.linkuni.backend.repository.TextExtractRepository;
 import com.linkuni.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class PostService {
@@ -52,11 +58,23 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final TextExtractRepository textExtractRepository;
+    private final SummaryRepository summaryRepository;
+    private final ExtractTextService extractTextService;
     
-    public PostService(PostRepository postRepository, UserRepository userRepository, S3Service s3Service) {
+    public PostService(
+            PostRepository postRepository, 
+            UserRepository userRepository, 
+            S3Service s3Service,
+            TextExtractRepository textExtractRepository,
+            SummaryRepository summaryRepository,
+            ExtractTextService extractTextService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.s3Service = s3Service;
+        this.textExtractRepository = textExtractRepository;
+        this.summaryRepository = summaryRepository;
+        this.extractTextService = extractTextService;
     }
     
     /**
@@ -125,6 +143,11 @@ public class PostService {
             
             logger.info("Post uploaded successfully. Post ID: {}", savedPost.getPostId());
             
+            // For PDFs, extract text and generate summary asynchronously
+            if ("application/pdf".equals(contentType)) {
+                processDocumentAsync(savedPost, file);
+            }
+            
             return ApiResponse.success("Post successfully uploaded!", PostDto.fromPost(savedPost));
             
         } catch (IOException e) {
@@ -137,10 +160,50 @@ public class PostService {
     }
     
     /**
-     * Gets a post by ID
+     * Process document text extraction and summarization asynchronously
+     * 
+     * @param post The saved post
+     * @param file The uploaded file
+     */
+    @Async
+    public void processDocumentAsync(Post post, MultipartFile file) {
+        logger.info("Starting asynchronous text extraction for post: {}", post.getPostId());
+        try {
+            Map<String, Object> extractionResult = extractTextService.extractText(file);
+            
+            if (extractionResult != null) {
+                // Save summary
+                Object summaryObj = extractionResult.get("summary");
+                if (summaryObj != null) {
+                    String summaryText = summaryObj.toString();
+                    Summary summary = Summary.builder()
+                            .post(post)
+                            .summaryText(summaryText)
+                            .build();
+                    summaryRepository.save(summary);
+                    logger.info("Summary saved for post: {}", post.getPostId());
+                }
+                
+                // Save text extraction
+                TextExtract textExtract = TextExtract.builder()
+                        .post(post)
+                        .build();
+                textExtract.setTextFromMap(extractionResult);
+                textExtractRepository.save(textExtract);
+                logger.info("Text extraction saved for post: {}", post.getPostId());
+            } else {
+                logger.warn("Extraction result was null for post: {}", post.getPostId());
+            }
+        } catch (Exception e) {
+            logger.error("Error processing document for post {}: {}", post.getPostId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Gets a post by ID with extracted text and summary if available
      * 
      * @param postId the ID of the post
-     * @return ApiResponse with the post
+     * @return ApiResponse with the post and any extracted information
      */
     public ApiResponse getPostById(UUID postId) {
         Optional<Post> postOptional = postRepository.findById(postId);
@@ -153,7 +216,21 @@ public class PostService {
         Post post = postOptional.get();
         logger.info("Post retrieved: {}", post.getPostId());
         
-        return ApiResponse.success("Post retrieved successfully", PostDto.fromPost(post));
+        PostDto postDto = PostDto.fromPost(post);
+        
+        // Fetch and include summary if available
+        Optional<Summary> summaryOptional = summaryRepository.findByPost(post);
+        if (summaryOptional.isPresent()) {
+            postDto.setSummary(summaryOptional.get().getSummaryText());
+        }
+        
+        // Fetch and include text extract if available
+        Optional<TextExtract> textExtractOptional = textExtractRepository.findByPost(post);
+        if (textExtractOptional.isPresent()) {
+            postDto.setExtractedText(textExtractOptional.get().getExtractedText());
+        }
+        
+        return ApiResponse.success("Post retrieved successfully", postDto);
     }
     
     /**

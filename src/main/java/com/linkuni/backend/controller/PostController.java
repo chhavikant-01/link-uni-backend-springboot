@@ -1,10 +1,16 @@
 package com.linkuni.backend.controller;
 
 import com.linkuni.backend.dto.ApiResponse;
+import com.linkuni.backend.dto.PostDto;
 import com.linkuni.backend.dto.PostFilterRequest;
 import com.linkuni.backend.dto.PostUploadRequest;
+import com.linkuni.backend.model.Summary;
+import com.linkuni.backend.model.TextExtract;
 import com.linkuni.backend.model.User;
+import com.linkuni.backend.repository.SummaryRepository;
+import com.linkuni.backend.repository.TextExtractRepository;
 import com.linkuni.backend.service.PostService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,17 +23,27 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/post")
+@RequestMapping("/api/v1/posts")
 public class PostController {
     private static final Logger logger = LoggerFactory.getLogger(PostController.class);
     
     private final PostService postService;
+    private final SummaryRepository summaryRepository;
+    private final TextExtractRepository textExtractRepository;
     
-    public PostController(PostService postService) {
+    public PostController(PostService postService, 
+                         SummaryRepository summaryRepository, 
+                         TextExtractRepository textExtractRepository) {
         this.postService = postService;
+        this.summaryRepository = summaryRepository;
+        this.textExtractRepository = textExtractRepository;
     }
     
     /**
@@ -417,11 +433,20 @@ public class PostController {
      * @param filterRequest the filter criteria
      * @return the filtered posts
      */
-    @PostMapping("/filter")
+    @PostMapping(
+        path = "/filter",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
     public ResponseEntity<ApiResponse> filterPosts(
             @RequestBody PostFilterRequest filterRequest
     ) {
         logger.info("Filter posts requested with criteria: {}", filterRequest);
+        
+        // Ensure filter request is not null
+        if (filterRequest == null) {
+            filterRequest = new PostFilterRequest();
+        }
         
         ApiResponse response = postService.filterPosts(filterRequest);
         
@@ -463,5 +488,36 @@ public class PostController {
         }
         
         return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Get text extraction data for a post
+     * 
+     * @param postId The ID of the post
+     * @return The extracted text and summary
+     */
+    @GetMapping("/{postId}/extract")
+    public ResponseEntity<ApiResponse> getTextExtraction(@PathVariable UUID postId) {
+        logger.info("Get text extraction requested for post ID: {}", postId);
+        
+        Map<String, Object> extractionData = new HashMap<>();
+        
+        // Get summary if available
+        Optional<Summary> summaryOptional = summaryRepository.findByPost_PostId(postId);
+        if (summaryOptional.isPresent()) {
+            extractionData.put("summary", summaryOptional.get().getSummaryText());
+        }
+        
+        // Get extracted text if available
+        Optional<TextExtract> textExtractOptional = textExtractRepository.findByPost_PostId(postId);
+        if (textExtractOptional.isPresent()) {
+            extractionData.put("extractedText", textExtractOptional.get().getExtractedText());
+        }
+        
+        if (extractionData.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success("Text extraction data retrieved", extractionData));
     }
 } 

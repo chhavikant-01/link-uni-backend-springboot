@@ -3,7 +3,9 @@ package com.linkuni.backend.dto;
 import com.linkuni.backend.model.Post;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,9 +22,15 @@ public class PostDto {
     private String userFirstName;
     private String userLastName;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private List<UUID> likes;
+    private AuthorDto author;
+    private String summary;
+    private String extractedText;
     
     public PostDto() {
         this.category = new HashMap<>();
+        this.likes = new ArrayList<>();
     }
     
     public static PostDto fromPost(Post post) {
@@ -45,6 +53,9 @@ public class PostDto {
         dto.setUserFirstName(post.getUser().getFirstname());
         dto.setUserLastName(post.getUser().getLastname());
         dto.setCreatedAt(post.getCreatedAt());
+        dto.setUpdatedAt(post.getUpdatedAt());
+        dto.setLikes(post.getLikes());
+        dto.setAuthor(AuthorDto.fromUser(post.getUser()));
         
         return dto;
     }
@@ -143,5 +154,45 @@ public class PostDto {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    
+    public List<UUID> getLikes() {
+        return likes;
+    }
+    
+    public void setLikes(List<UUID> likes) {
+        this.likes = likes;
+    }
+
+    public AuthorDto getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(AuthorDto author) {
+        this.author = author;
+    }
+    
+    public String getSummary() {
+        return summary;
+    }
+    
+    public void setSummary(String summary) {
+        this.summary = summary;
+    }
+    
+    public String getExtractedText() {
+        return extractedText;
+    }
+    
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
     }
 } 
